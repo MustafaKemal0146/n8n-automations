@@ -15,6 +15,7 @@
 [![Workflows](https://img.shields.io/badge/Templates-22+-FF6B6B?style=for-the-badge&logo=workflow&logoColor=white)](#)
 [![Ready to Use](https://img.shields.io/badge/Ready-To%20Use-4ECDC4?style=for-the-badge&logo=rocket&logoColor=white)](#)
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![Buy Me A Coffee](https://img.shields.io/badge/☕_Buy_me_a_coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/ismustafakt)
 
 </div>
 
@@ -180,6 +181,7 @@ Found a bug or have an improvement idea?
 
 **Mustafa Kemal ÇINGIL**
 - GitHub: [@MustafaKemal0146](https://github.com/MustafaKemal0146)
+- LinkedIn: [mustafakemalcingil](https://www.linkedin.com/in/mustafakemalcingil/)
 - Repository: [n8n-automations](https://github.com/MustafaKemal0146/n8n-automations)
 
 ## ⭐ Support
@@ -189,6 +191,8 @@ If these templates helped you automate your workflows:
 - 🔄 Share with your team
 - 💬 Join the n8n community discussions
 
+</div>
+
 ---
 
 <div align="center">
@@ -196,6 +200,8 @@ If these templates helped you automate your workflows:
 **Made with ❤️ for the n8n automation community**
 
 *Transform your repetitive tasks into intelligent workflows*
+
+[![Buy Me A Coffee](https://img.shields.io/badge/☕_Buy_me_a_coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/ismustafakt)
 
 <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=16&duration=4000&pause=1000&color=00FF88&center=true&vCenter=true&width=600&lines=22+Ready-to-Use+Templates;Save+Hours+Every+Week;Automate+Everything;Thank+You+for+Using!" alt="Footer Typing SVG" />
 
