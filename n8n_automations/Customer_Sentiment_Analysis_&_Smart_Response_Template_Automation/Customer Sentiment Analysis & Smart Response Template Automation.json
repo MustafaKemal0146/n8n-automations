@@ -1,0 +1,508 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "f7d69dc8-3b95-4adb-92bb-5f1ee6321dbe",
+      "name": "Zendesk New Ticket",
+      "type": "n8n-nodes-base.zendeskTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        -160
+      ],
+      "webhookId": "zendesk-new-ticket"
+    },
+    {
+      "parameters": {},
+      "id": "5fefc6ca-4873-4290-94c3-fb09a1c8e57b",
+      "name": "Gemini - Duygu Analizi",
+      "type": "n8n-nodes-base.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1020,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gemini'den gelen JSON'ı parse et\nlet analysis;\ntry {\n  const geminiResponse = $input.first().json.response;\n  analysis = JSON.parse(geminiResponse);\n} catch (error) {\n  // Eğer JSON parse edilemezse varsayılan değerler\n  analysis = {\n    duygu: \"nötr\",\n    nishan: \"soru\",\n    aciliyet: \"orta\",\n    kategori: \"genel\",\n    özet: \"Analiz edilemedi\"\n  };\n}\n\n// Orijinal ticket bilgilerini de ekle\nconst ticketData = $node['Zendesk New Ticket'].json;\n\nreturn {\n  json: {\n    ticket: ticketData.ticket,\n    analysis: analysis,\n    customerEmail: ticketData.ticket.requester.email,\n    ticketId: ticketData.ticket.id,\n    subject: ticketData.ticket.subject,\n    description: ticketData.ticket.description\n  }\n};"
+      },
+      "id": "83ba9a42-c658-4c1b-be35-a42bba3cb339",
+      "name": "Parse Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4",
+        "prompt": "=Aşağıdaki müşteri destek talebi için empatik ve çözüm odaklı bir cevap taslağı hazırla:\n\n**Müşteri Bilgileri:**\n- Email: {{ $json.customerEmail }}\n- Konu: {{ $json.subject }}\n- Mesaj: {{ $json.description }}\n\n**Analiz Sonucu:**\n- Duygu: {{ $json.analysis.duygu }}\n- Nişan: {{ $json.analysis.nishan }}\n- Aciliyet: {{ $json.analysis.aciliyet }}\n- Kategori: {{ $json.analysis.kategori }}\n- Özet: {{ $json.analysis.özet }}\n\n**Cevap Kriterleri:**\n1. Duyguya uygun empati göster\n2. {{ $json.analysis.nishan }} türüne göre yaklaşım sergile\n3. Profesyonel ama sıcak ton kullan\n4. Türkçe yanıtla\n5. Somut çözüm önerileri sun\n6. Gerekirse ek bilgi/belge iste\n7. Takip süreci hakkında bilgi ver\n\nSadece cevap taslağını döndür, başka açıklama yapma.",
+        "options": {
+          "temperature": 0.7
+        },
+        "requestOptions": {}
+      },
+      "id": "a4ff07e1-28c6-4b23-9c8a-246fc9e38229",
+      "name": "GPT-4 - Cevap Taslağı",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "text": "=🎫 **Yeni Destek Talebi Taslağı** - Ticket #{{ $node['Parse Analysis'].json.ticketId }}\n\n**📧 Müşteri:** {{ $node['Parse Analysis'].json.customerEmail }}\n**📋 Konu:** {{ $node['Parse Analysis'].json.subject }}\n\n**🔍 Analiz:**\n• Duygu: {{ $node['Parse Analysis'].json.analysis.duygu }} \n• Nişan: {{ $node['Parse Analysis'].json.analysis.nishan }}\n• Aciliyet: {{ $node['Parse Analysis'].json.analysis.aciliyet }}\n• Kategori: {{ $node['Parse Analysis'].json.analysis.kategori }}\n\n**💬 Önerilen Cevap:**\n```\n{{ $node['GPT-4 - Cevap Taslağı'].json.choices[0].message.content }}\n```\n\n**⚡ Aksiyonlar:**\n• ✅ Onayla ve gönder\n• ✏️ Düzenle\n• ❌ Reddet ve yeniden hazırla",
+        "otherOptions": {}
+      },
+      "id": "eba0b9c7-1a5f-4fcb-9aad-8d2210572630",
+      "name": "Slack - Taslak Bildirimi",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        -120
+      ],
+      "webhookId": "c2d37c83-9bf8-4464-94ba-56f36f8cb332"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "approval-check",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "approve",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9dd19069-37e9-45f8-80e5-ce650e6b869c",
+      "name": "Onay Kontrolü",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        20,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "additionalFields": {}
+      },
+      "id": "5e4bd1bd-6b07-4796-b1fa-5942ca0b3173",
+      "name": "Zendesk - Onaylanmış Cevap",
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [
+        500,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "text": "=❌ **Taslak Reddedildi** - Ticket #{{ $node['Parse Analysis'].json.ticketId }}\n\nYeniden işleme alınıyor...",
+        "otherOptions": {}
+      },
+      "id": "526b6aca-20b2-4209-9d18-8bad57a8b9c8",
+      "name": "Slack - Red Bildirimi",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [
+        240,
+        260
+      ],
+      "webhookId": "267195a5-723b-4a4e-8391-7be6ba36b618"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4",
+        "prompt": "=Önceki taslak reddedildi. Daha iyi bir cevap hazırla:\n\n**Müşteri Talebi:**\n{{ $node['Parse Analysis'].json.description }}\n\n**Analiz:**\n- Duygu: {{ $node['Parse Analysis'].json.analysis.duygu }}\n- Nişan: {{ $node['Parse Analysis'].json.analysis.nishan }}\n- Aciliyet: {{ $node['Parse Analysis'].json.analysis.aciliyet }}\n\n**Yeni Taslak Kriterleri:**\n- Daha kişisel ve empati yoğun yaklaşım\n- Somut çözüm adımları\n- Net zaman çerçeveleri\n- Ek destek kanalları önerisi\n\nSadece revize edilmiş cevap taslağını döndür.",
+        "options": {
+          "temperature": 0.8
+        },
+        "requestOptions": {}
+      },
+      "id": "0da1ec25-ee89-400d-8c5b-55886a1feff5",
+      "name": "GPT-4 - Revize Taslak",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        500,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "text": "=🔄 **Revize Edilmiş Taslak** - Ticket #{{ $node['Parse Analysis'].json.ticketId }}\n\n**💬 Yeni Önerilen Cevap:**\n```\n{{ $node['GPT-4 - Revize Taslak'].json.choices[0].message.content }}\n```\n\n**⚡ Aksiyonlar:**\n• ✅ Onayla ve gönder\n• ✏️ Manuel düzenle\n• 🔄 Tekrar revize et",
+        "otherOptions": {}
+      },
+      "id": "c709cfc5-de04-4824-a1b2-bea0c8b0e4fe",
+      "name": "Slack - Revize Bildirimi",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [
+        740,
+        260
+      ],
+      "webhookId": "608196c0-0ca8-4c48-8367-40fa6bdbb60a"
+    },
+    {
+      "parameters": {
+        "text": "=✅ **Cevap Gönderildi** - Ticket #{{ $node['Parse Analysis'].json.ticketId }}\n\n{{ $node['Parse Analysis'].json.customerEmail }} adresine cevap başarıyla iletildi.\n\n📊 **İstatistikler:**\n• İşlem Süresi: {{ Math.round((Date.now() - Date.parse($node['Zendesk New Ticket'].json.ticket.created_at)) / 1000 / 60) }} dakika\n• Duygu: {{ $node['Parse Analysis'].json.analysis.duygu }}\n• Kategori: {{ $node['Parse Analysis'].json.analysis.kategori }}",
+        "otherOptions": {}
+      },
+      "id": "db8d6aec-ba3b-47ca-9c56-c1b6a86866df",
+      "name": "Slack - Başarı Bildirimi",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [
+        740,
+        -220
+      ],
+      "webhookId": "22dbb0aa-aa3c-4ba1-9ccf-c2b415461f0d"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "approval-action",
+        "options": {}
+      },
+      "id": "bf2502b4-6244-4367-8066-383a62db307c",
+      "name": "Webhook - Onay Sistemi",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        80
+      ],
+      "webhookId": "1dc67364-7d01-45ac-918c-3f0e27ba9c52"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Webhook'den gelen onay/red durumunu işle\nconst webhookData = $input.first().json;\nconst action = webhookData.action; // 'approve' veya 'reject'\nconst ticketId = webhookData.ticketId;\nconst comment = webhookData.comment || '';\n\n// Orijinal ticket verisini bul\nconst originalData = $node['Parse Analysis'].json;\n\nreturn {\n  json: {\n    action: action,\n    ticketId: ticketId,\n    comment: comment,\n    ...originalData\n  }\n};"
+      },
+      "id": "fe531d53-2188-4c75-b5ba-7af6a3cc4f41",
+      "name": "Process Approval",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "high-priority-check",
+              "leftValue": "={{ $node['Parse Analysis'].json.analysis.aciliyet }}",
+              "rightValue": "yüksek",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "negative-sentiment",
+              "leftValue": "={{ $node['Parse Analysis'].json.analysis.duygu }}",
+              "rightValue": "negatif",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "fe58de25-deaf-4f0a-ac90-2bcd2b78d6cd",
+      "name": "Öncelik Kontrolü",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -420,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "text": "=🚨 **ACİL DESTEK TALEBİ** - Ticket #{{ $node['Parse Analysis'].json.ticketId }}\n\n**⚠️ Durum:** Yüksek öncelikli/Negatif duygu\n**📧 Müşteri:** {{ $node['Parse Analysis'].json.customerEmail }}\n**📋 Konu:** {{ $node['Parse Analysis'].json.subject }}\n\n**🔍 Analiz:**\n• Duygu: {{ $node['Parse Analysis'].json.analysis.duygu }}\n• Aciliyet: {{ $node['Parse Analysis'].json.analysis.aciliyet }}\n• Özet: {{ $node['Parse Analysis'].json.analysis.özet }}\n\n@channel Lütfen derhal müdahale edin!",
+        "otherOptions": {}
+      },
+      "id": "5c43a15b-d36b-4aeb-b687-e36e86bf9776",
+      "name": "Slack - Acil Bildirim",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        280
+      ],
+      "webhookId": "a63038d2-beee-4d1c-a920-3d2b90fd8314"
+    },
+    {
+      "parameters": {
+        "content": "## Müşteri Yanıt girişi\nBu kısımda müşterilerinizden gelen yanıtları\nyapay zekaya bağlayacaksınız\n",
+        "height": 260,
+        "width": 400
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1220,
+        -280
+      ],
+      "id": "36f398b6-6de8-4d42-84ba-9093c72672bc",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Reddedildi !!!\nOnaylanmamış bir cevap olursa yada konuşmanın revize edilmesi gerekirse\nSlack üzerinden revize bildirimi ile kayıt etme imkanı\n",
+        "height": 240,
+        "width": 680,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        220,
+        140
+      ],
+      "id": "fe7bb4bc-320a-4301-a35e-4013c890612f",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Onaylandı!!!\nOnaylanmış bir cevap olursa yada konuşma biterse\nSlack üzerinden başarı bildirimi ile kayıt imkanı\n",
+        "height": 280,
+        "width": 480,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        380,
+        -340
+      ],
+      "id": "9cf1b48d-74b4-47c9-9333-39ac77ea6fa1",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Müşteriye Cevap Verme Kısmı\nMuşteriyeden gelen cevabı değerlendirip\nCevap vermek için GPT-4 Modelini kullanıyoruz.\nAyarlamarlınızı kendi api anahtarınıza göre \nKonfigure edin\n",
+        "height": 800,
+        "width": 800,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        -360
+      ],
+      "id": "9db32204-0c43-4ab3-9c08-e86e2b8cd8cf",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Müşteri Duygu Analizi & Akıllı Cevap Taslağı Otomasyonu\n\nBu n8n workflow’u, müşteri destek süreçlerini hızlandırmak ve kaliteyi artırmak amacıyla tasarlandı. Gelen her yeni Zendesk destek talebi;\n\n- **Google Gemini** tarafından duygu, nişan (soru, şikayet, talep vb.), aciliyet ve kategori bazında otomatik olarak analiz edilir.  \n- Analiz sonuçlarına göre **OpenAI GPT-4** modeli, empatik, profesyonel ve çözüm odaklı müşteri yanıt taslakları oluşturur.  \n- Taslaklar **Slack**’te destek ekibine gönderilir, ekip onaylarsa Zendesk üzerinden müşteriye otomatik olarak iletilir.  \n- Onaylanmayan veya revize gereken cevaplar için tekrar GPT-4 ile iyileştirilmiş taslaklar hazırlanır ve süreç baştan devam eder.  \n- Yüksek öncelikli veya negatif duygu taşıyan talepler Slack’te acil müdahale kanallarına otomatik olarak yönlendirilir.\n\nBu sayede müşteri memnuniyeti yükselir, destek ekibinin iş yükü azalır, süreçler hem hızlı hem kontrollü yürür. Kodlama bilgisi gerektirmeden, tamamen no-code platformu üzerinde kurulu, ölçeklenebilir ve kolay adapte edilebilir bir yapay zekâ destekli destek otomasyonudur.\n\n",
+        "height": 600,
+        "width": 580
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        920,
+        -300
+      ],
+      "id": "7531c290-269b-44da-854e-083a9eb3e736",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Hazırlayan\n**Mustafa Kemal Çıngıl** \n\n[Github Hesabım](https://github.com/MustafaKemal0146/)\n[Linkedin Hesabım](https://www.linkedin.com/in/mustafakemalcingil/)\n[Kişisel Web Sitem](https://mustafakemalcingil.site/)",
+        "width": 180,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        280,
+        -40
+      ],
+      "id": "62429b4c-23ff-4b4a-9857-b520daf704f1",
+      "name": "Sticky Note5"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Parse Analysis": {
+      "main": [
+        [
+          {
+            "node": "GPT-4 - Cevap Taslağı",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Öncelik Kontrolü",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT-4 - Cevap Taslağı": {
+      "main": [
+        [
+          {
+            "node": "Slack - Taslak Bildirimi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack - Taslak Bildirimi": {
+      "main": [
+        [
+          {
+            "node": "Onay Kontrolü",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Onay Kontrolü": {
+      "main": [
+        [
+          {
+            "node": "Zendesk - Onaylanmış Cevap",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack - Red Bildirimi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zendesk - Onaylanmış Cevap": {
+      "main": [
+        [
+          {
+            "node": "Slack - Başarı Bildirimi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack - Red Bildirimi": {
+      "main": [
+        [
+          {
+            "node": "GPT-4 - Revize Taslak",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT-4 - Revize Taslak": {
+      "main": [
+        [
+          {
+            "node": "Slack - Revize Bildirimi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Onay Sistemi": {
+      "main": [
+        [
+          {
+            "node": "Process Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Approval": {
+      "main": [
+        [
+          {
+            "node": "Onay Kontrolü",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Öncelik Kontrolü": {
+      "main": [
+        [
+          {
+            "node": "Slack - Acil Bildirim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zendesk New Ticket": {
+      "main": [
+        [
+          {
+            "node": "Parse Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5304069b-6596-4964-84a4-da6868862411",
+  "meta": {
+    "instanceId": "490a4c7dba67af614bc50a0e5bfcb2c73c718bf4c1089201c886c04c62578fc5"
+  },
+  "id": "vPWNC67b9NExpoKi",
+  "tags": []
+}
